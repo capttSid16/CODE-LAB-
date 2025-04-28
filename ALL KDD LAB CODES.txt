@@ -1,0 +1,527 @@
+LAB 1 REMOVING OUTLIER USING IQR AND ZSCORE METHOD 
+
+Z-Score method 
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns 
+data = pd.read_csv("iris.csv")
+print(data.head())
+data.describe()
+plt.figure(figsize=[10,10])
+sns.boxplot(data=data)
+from scipy.stats import zscore 
+zscore = zscore(data.drop('variety',axis=1))
+outliers = np.abs(zscore) > 3
+outliers_df = data[outliers.any(axis=1)]
+print("outliers")
+print(outliers_df)
+
+IQR method  
+
+# Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load dataset
+titanic = pd.read_csv("Titanic-Dataset.csv")
+
+# Define numeric and categorical columns
+numeric_cols = ['Survived', 'Pclass', 'Age', 'SibSp', 'Parch', 'Fare']
+cat_cols = ['Name', 'Sex', 'Cabin', 'Embarked']
+
+# Fill missing values
+titanic['Age'].fillna(titanic['Age'].mean(), inplace=True)
+titanic['Cabin'].fillna(titanic['Cabin'].mode()[0], inplace=True)
+titanic['Embarked'].fillna(titanic['Embarked'].mode()[0], inplace=True)
+
+# Check missing values
+print("Missing values after filling:\n", titanic.isnull().sum())
+
+# Boxplot for all numeric columns
+titanic.boxplot(column=numeric_cols)
+plt.title("Boxplot of Numeric Columns")
+plt.show()
+
+# Seaborn boxplot specifically for 'Fare'
+sns.boxplot(x=titanic['Fare'])
+plt.title("Boxplot of Fare")
+plt.show()
+
+# Detect and remove outliers in 'Fare'
+titanic['Fare_Outlier'] = False
+
+# Calculate IQR
+q75, q25 = np.percentile(titanic['Fare'], [75, 25])
+iqr = q75 - q25
+max_val = q75 + (iqr * 1.5)
+min_val = q25 - (iqr * 1.5)
+
+# Mark Fare outliers
+titanic.loc[(titanic['Fare'] < min_val) | (titanic['Fare'] > max_val), 'Fare_Outlier'] = True
+
+# Print IQR info
+print(f"The Interquartile range (IQR) is: {iqr}\n")
+print(f"75th percentile (Q3): {q75}\n25th percentile (Q1): {q25}\n")
+print(f"Upper bound: {max_val}\nLower bound: {min_val}\n")
+
+# Display outliers
+outliers = titanic[titanic['Fare_Outlier']]
+print(f"Outliers detected: {outliers.shape[0]} rows")
+print(outliers[['Fare', 'Name']].to_string(index=False))
+
+# Remove outliers
+titanic = titanic[~titanic['Fare_Outlier']]
+
+# Drop helper column
+titanic.drop(columns=['Fare_Outlier'], inplace=True)
+
+# New dataset shape
+print(f"\nNew dataset shape after removing Fare outliers: {titanic.shape}")
+
+# Boxplot after removing Fare outliers
+sns.boxplot(x=titanic['Fare'])
+plt.title("Boxplot of Fare (After Removing Outliers)")
+plt.show()
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+LAB 3 :- FILL MISSING VALUES AND REMOVE OUTLIERS USING SD
+
+METHOD 1 
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns 
+data = pd.read_csv("Titanic-Dataset.csv")
+data.head()
+data.isnull().sum()
+data['Age'].fillna(25,inplace=True)
+data['Cabin'].fillna('unknown',inplace=True)
+data['Embarked'].fillna('S',inplace=True)
+data.isnull().sum()
+
+METHOD 2 
+
+## repeat the same step from  method 1 only change in step 3
+data['Age'].fillna(data['Age'].mean(),inplace=True)
+data['Cabin'].fillna(data['Cabin'].mode(),inplace=True)
+data['Embarked'].fillna(data['Embarked'].mode(),inplace=True)
+data.isnull().sum()
+data.boxplot('Fare')
+plt.show()
+
+mean = data['Fare'].mean()
+std = data['Fare'].std()
+threshold = 3
+outliers = (data['Fare']-mean).abs() > threshold * std
+data_no_outliers = data[~outliers]
+display(data_no_outliers)
+
+sns.boxplot(x = 'Fare', data = data_no_outliers)
+plt.show()
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+LAB 4 BINING METHOD 
+
+import pandas as pd
+import numpy as np
+from statsmodels.datasets import get_rdataset  # Fixed module name
+
+boston = get_rdataset('Boston', 'MASS')
+boston_df = boston.data
+
+data_column = 'age'
+
+
+# Equal-width binning
+def equal_width_binning(data, num_bins):
+    bin_edges = np.linspace(data.min(), data.max(), num_bins + 1)
+    bins = np.digitize(data, bin_edges, right=False)
+    return bins, bin_edges
+
+num_bins = 2
+boston_df['AGE_equal_width_bins'], _ = equal_width_binning(boston_df[data_column], num_bins)
+display(boston_df['AGE_equal_width_bins'].head(11))
+
+# Equal-frequency binning
+def equal_freq_binning(data, num_bins):
+    bins = pd.qcut(data, num_bins, labels=False)
+    return bins, None
+
+boston_df['AGE_equal_freq_bins'], _ = equal_freq_binning(boston_df[data_column], num_bins)
+display(boston_df['AGE_equal_freq_bins'].head(11))
+
+# Bin mean smoothing
+def bin_mean_smoothing(data, bins):
+    return data.groupby(bins).transform('mean')
+
+boston_df['AGE_smoothed_mean'] = bin_mean_smoothing(boston_df[data_column], boston_df['AGE_equal_width_bins'])
+display(boston_df['AGE_smoothed_mean'].head(11))
+
+# Bin median smoothing
+def bin_median_smoothing(data, bins):
+    return data.groupby(bins).transform('median')
+
+boston_df['AGE_smoothed_median'] = bin_median_smoothing(boston_df[data_column], boston_df['AGE_equal_width_bins'])
+display(boston_df['AGE_smoothed_median'].head(11))
+
+#  Bin boundary smoothing
+def bin_boundary_smoothing(data, bin_edges):
+    bins = np.digitize(data, bin_edges, right=False)
+
+    def smooth_value(x):
+        for i in range(1, len(bin_edges)):
+            if bin_edges[i-1] <= x < bin_edges[i] or (i == len(bin_edges)-1 and x == bin_edges[i]):
+                lower = bin_edges[i - 1]
+                upper = bin_edges[i]
+                return lower if abs(x - lower) < abs(x - upper) else upper
+        return x  # fallback
+
+    return data.apply(smooth_value)
+
+
+boston_df['AGE_smoothed_boundary'] = bin_boundary_smoothing(
+    boston_df[data_column], 
+    np.linspace(boston_df[data_column].min(), boston_df[data_column].max(), num_bins + 1)
+)
+
+display(boston_df['AGE_smoothed_boundary'].head(11))
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+LAB 6 :- ETL ON GIVEN DATASET 
+
+import pandas as pd
+import numpy as np
+df = pd.read_csv("Titanic-Dataset.csv")
+
+df.info()
+df.isnull().sum()
+# Fill missing values
+df['Age'].fillna(df['Age'].mean(), inplace=True)
+df['Embarked'].fillna(df['Embarked'].mode()[0], inplace=True)
+
+df.drop(['Cabin', 'Ticket', 'Name'], axis=1, inplace=True )
+
+df['Sex'] = df['Sex'].map({'male': 0, 'female': 1})
+df['Embarked'] = df['Embarked'].map({'C': 0, 'Q': 1, 'S': 2})
+
+df.head()
+df.to_csv('Transformed-Titanic.csv', index=False)
+print(df.head())
+df.head()
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+LAB 7 : FREQUENT ITEM SET 
+
+from mlxtend.preprocessing import TransactionEncoder
+from mlxtend.frequent_patterns import fpgrowth, association_rules
+import pandas as pd
+
+data = {
+    'Transaction' : ['T1','T2','T3','T4','T5','T6','T7','T8','T9'],
+    'Items' : [
+        ['A', 'B', 'E'],
+        ['B', 'D'],
+        ['B', 'C'],
+        ['A', 'B', 'D'],
+        ['A', 'C'],
+        ['B', 'C'],
+        ['A', 'C'],
+        ['A', 'B', 'C', 'E'],
+        ['A', 'B', 'C']
+    ]
+}
+
+transactions = data['Items']
+
+encoder = TransactionEncoder()
+onehot = encoder.fit_transform(transactions)
+df = pd.DataFrame(onehot, columns=encoder.columns_)
+
+frequent_itemset = fpgrowth(df, min_support=0.33, use_colnames=True)
+
+rules = association_rules(frequent_itemset, metric="confidence", min_threshold=0.5)
+
+print("Frequent Itemsets:")
+print(frequent_itemset.to_string(index=False))
+print("\nAssociation Rules:")
+print(rules.to_string(index=False))
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+LAB 8 :- LINEAR REGRESSION 
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+import warnings
+warnings.filterwarnings("ignore")
+
+
+df = pd.read_csv("Salary_Data.csv")
+df.head()
+
+df.describe()
+
+sns.displot(df['Salary'], kde = True)
+plt.title('Dists')
+
+
+import matplotlib.pyplot as plt
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+
+# Step 1: Fill missing values manually in df
+df.fillna(df[['Age', 'Years of Experience', 'Salary']].mean(), inplace=True)
+for column in ['Gender', 'Education Level', 'Job Title']:
+    mode_value = df[column].mode()[0]
+    df[column].fillna(mode_value, inplace=True)
+
+# Step 2: Split the dataset
+X = df.drop('Salary', axis=1)
+y = df['Salary']
+
+# Step 3: Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Separate numerical and categorical columns
+numerical_cols = ['Age', 'Years of Experience']
+categorical_cols = ['Gender', 'Education Level', 'Job Title']
+
+# Step 5: Impute missing values only for numerical columns
+imputer = SimpleImputer(strategy='mean')
+
+# Convert X_train and X_test to DataFrame again after imputing
+X_train_num = pd.DataFrame(imputer.fit_transform(X_train[numerical_cols]), columns=numerical_cols)
+X_test_num = pd.DataFrame(imputer.transform(X_test[numerical_cols]), columns=numerical_cols)
+
+# Keep categorical columns as they are
+X_train_cat = X_train[categorical_cols].reset_index(drop=True)
+X_test_cat = X_test[categorical_cols].reset_index(drop=True)
+
+# Combine numerical and categorical back
+X_train = pd.concat([X_train_num, X_train_cat], axis=1)
+X_test = pd.concat([X_test_num, X_test_cat], axis=1)
+
+# Step 6: Plot the scatter plot
+plt.scatter(df['Years of Experience'], df['Salary'], color='lightcoral')
+plt.title('Salary vs Experience')
+plt.xlabel('Years of Experience')
+plt.ylabel('Salary')
+plt.show()
+
+X = df[['Years of Experience']]
+y = df['Salary']
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+regressor = LinearRegression()
+regressor.fit(X_train, y_train)
+
+y_pred_test =  regressor.predict(X_test)
+y_pred_train = regressor.predict(X_train)
+
+plt.scatter(X_train, y_train, color='lightcoral')
+plt.plot(X_train, y_pred_train, color='firebrick')
+plt.title('Salary vs Experience (Training Set)')
+plt.xlabel('Years of Experience')
+plt.ylabel('Salary')
+plt.legend(['X_train/Pred(y_test)', 'X_train/y_test'], title = 'Sal/Exp', loc = 'best', facecolor = 'white')
+plt.box(False)
+plt.show()
+
+plt.scatter(X_test, y_test, color='lightcoral')
+plt.plot(X_train, y_pred_train, color='firebrick')
+plt.title('Salary vs Experience (Test Set)')
+plt.xlabel('Years of Experience')
+plt.ylabel('Salary')
+plt.legend(['X_train/Pred(y_test)', 'X_train/y_test'], title = 'Sal/Exp', loc = 'best', facecolor = 'white')
+plt.box(False)
+plt.show()
+
+print(f'Coefficient : {regressor.coef_}')
+print(f'Intercept : {regressor.intercept_}')
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+LAB 9 :- APRIORI ALGORITHM 
+
+
+import pandas as pd
+import numpy as np
+from apyori import apriori
+store_data = pd.read_csv('bread basket.csv')
+store_data.head()
+print(f"The store_data has : {store_data.shape[0]} rows \nThe store data has : {store_data.shape[1]} columns")
+
+records = []
+for i in range(0,17):
+    records.append([str(store_data.shape[0]) for j in range(0, store_data.shape[1])])
+
+association_rules = apriori(records, min_support=0.8)
+association_results = list(association_rules)
+print(len(association_results))
+
+results_list = []
+
+for item in association_results:
+    antecedent = ", ".join(list(item.ordered_statistics[0].items_base))
+    consequent = ", ".join(list(item.ordered_statistics[0].items_add))
+    support = item.support
+    confidence = item.ordered_statistics[0].confidence
+    lift = item.ordered_statistics[0].lift
+
+results_list.append({'Antecedent': antecedent, 'Consequent': consequent, 'Support': support, 'Confidence': confidence, 'Lift': lift})
+
+results_df = pd.DataFrame(results_list)
+
+print("Association Rules")
+print(results_df)
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+LAB 10 :- CLASSIFICATION 
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn import datasets
+import warnings
+warnings.filterwarnings('ignore')
+
+iris = datasets.load_iris()
+x = iris.data[:, :2]
+y = iris.target
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+knn = KNeighborsClassifier(n_neighbors=3)
+knn.fit(x_train, y_train)
+y_pred = knn.predict(x_test)
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+
+x_min, x_max = x[:, 0].min() - 1, x[:, 0].max() + 1
+y_min, y_max = x[:, 1].min() - 1, x[:, 1].max() + 1
+h = 0.02
+xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+z = knn.predict(np.c_[xx.ravel(), yy.ravel()])
+z = z.reshape(xx.shape)
+
+plt.figure()
+plt.pcolormesh(xx, yy, z, cmap=plt.cm.Paired)
+plt.scatter(x_train[:, 0], x_train[:, 1], c=y_train, cmap=plt.cm.Paired, edgecolor='k', s=20)
+plt.scatter(x_test[:, 0], x_test[:, 1], c=y_test, cmap=plt.cm.Paired, edgecolor='k', s=30, marker='x')
+plt.xlabel('Sepal length')
+plt.ylabel('Sepal width')
+plt.title('KNN Classification')
+plt.show()
+
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+
+
+# Load the Iris dataset from CSV
+iris_df = pd.read_csv('iris.csv')
+
+# Separate features (X) and target variable (y)
+X = iris_df[['sepal.length', 'sepal.width']]  # Changed column names
+y = iris_df['variety']
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initialize the KNN classifier
+knn = KNeighborsClassifier(n_neighbors=3)
+
+# Fit the classifier to the training data
+knn.fit(X_train, y_train)
+
+# Predict on the testing data
+y_pred = knn.predict(X_test)
+
+# Visualize the split
+plt.figure(figsize=(8, 6))
+
+# Plot both training and testing data
+for species in iris_df['variety'].unique():
+    # Training data
+    train_data = X_train[y_train == species]
+    plt.scatter(train_data['sepal.length'], train_data['sepal.width'], label=f"{species} (Train)", marker='o')
+    
+    # Testing data
+    test_data = X_test[y_test == species]
+    plt.scatter(test_data['sepal.length'], test_data['sepal.width'], label=f"{species} (Test)", marker='x')
+
+plt.title('Iris Dataset - Train/Test Split')
+plt.xlabel('Sepal Length (cm)')
+plt.ylabel('Sepal Width (cm)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+LAB 11 : CLUSTERING 
+
+from sklearn.cluster import KMeans
+from sklearn import metrics
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings(action='ignore')
+
+x1 = np.array([3, 3, 1, 1, 4, 2, 5, 7, 6, 2, 3, 1, 1, 3, 4, 5, 2])
+x2 = np.array([5, 4, 6, 6, 5, 8, 6, 7, 6, 7, 1, 2, 1, 2, 3, 2, 3])
+
+# create new plot and data
+plt.plot()
+X = np.array(list(zip(x1, x2))).reshape(len(x1), 2)
+print(X)
+
+colors = ['b', 'g', 'c']
+markers = ['o', 'v', 's']
+
+# KMeans algorithm
+K = 3
+kmeans_model = KMeans(n_clusters=K).fit(X)
+
+print(kmeans_model.cluster_centers_)
+print(kmeans_model.labels_)
+centers = np.array(kmeans_model.cluster_centers_)
+
+plt.plot()
+plt.title('k means centroids')
+
+for i, l in enumerate(kmeans_model.labels_):
+    #print(i, l)
+    plt.plot(x1[i], x2[i], color=colors[l], marker=markers[l], ls='None')
+    plt.xlim([0, 10])
+    plt.ylim([0, 10])
+
+plt.scatter(centers[:, 0], centers[:, 1], marker='x', color='r')
+plt.show()
+
